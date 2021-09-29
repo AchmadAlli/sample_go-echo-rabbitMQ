@@ -1,0 +1,6 @@
+# Dev build
+build/
+tmp/
+
+# Test
+*.out
