@@ -8,11 +8,11 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type rabbitMQ struct {
+type RabbitMQClient struct {
 	channel *amqp.Channel
 }
 
-func Connect() *rabbitMQ {
+func Connect() *RabbitMQClient {
 	err := godotenv.Load(".env")
 
 	if err != nil {
@@ -21,23 +21,21 @@ func Connect() *rabbitMQ {
 
 	url := os.Getenv("AMQP_SERVER_URL")
 
-	connectRabbitMQ, err := amqp.Dial(url)
+	connection, err := amqp.Dial(url)
 	if err != nil {
 		panic(err)
 	}
-	defer connectRabbitMQ.Close()
 
-	channelRabbitMQ, err := connectRabbitMQ.Channel()
+	channel, err := connection.Channel()
 	if err != nil {
 		panic(err)
 	}
-	defer channelRabbitMQ.Close()
 
-	return &rabbitMQ{channel: channelRabbitMQ}
+	return &RabbitMQClient{channel: channel}
 }
 
-func (r rabbitMQ) PublishMessage(queueName string, message amqp.Publishing) {
-	r.channel.Publish(
+func (r *RabbitMQClient) PublishMessage(queueName string, message amqp.Publishing) error {
+	return r.channel.Publish(
 		"",        // exchange
 		queueName, // queue name
 		false,     // mandatory
@@ -46,7 +44,7 @@ func (r rabbitMQ) PublishMessage(queueName string, message amqp.Publishing) {
 	)
 }
 
-func (r rabbitMQ) Consume(queueName string) (<-chan amqp.Delivery, error) {
+func (r *RabbitMQClient) Consume(queueName string) (<-chan amqp.Delivery, error) {
 	messages, err := r.channel.Consume(
 		queueName, // queue name
 		"",        // consumer
@@ -58,4 +56,18 @@ func (r rabbitMQ) Consume(queueName string) (<-chan amqp.Delivery, error) {
 	)
 
 	return messages, err
+}
+
+func (r RabbitMQClient) DeclareQueue(queueName string) {
+	_, err := r.channel.QueueDeclare(
+		queueName, // queue name
+		true,      // durable
+		false,     // auto delete
+		false,     // exclusive
+		false,     // no wait
+		nil,       // arguments
+	)
+	if err != nil {
+		panic(err)
+	}
 }
