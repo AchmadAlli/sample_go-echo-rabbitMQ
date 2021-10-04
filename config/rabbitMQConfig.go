@@ -16,7 +16,7 @@ func Connect() *RabbitMQClient {
 	err := godotenv.Load(".env")
 
 	if err != nil {
-		log.Fatalf("Missing env data")
+		log.Println("Missing env data")
 	}
 
 	url := os.Getenv("AMQP_SERVER_URL")

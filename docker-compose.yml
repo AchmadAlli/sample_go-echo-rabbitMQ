@@ -1,0 +1,68 @@
+version: "3.8"
+
+services:
+  rabbit-mq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbit-mq
+    ports:
+      - 5672:5672   # for sender and consumer connections
+      - 15672:15672 # for serve RabbitMQ GUI
+    volumes:
+      - /var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:15672"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
+    networks:
+      - dev-net
+  
+  provider:
+    container_name: provider
+    ports: 
+      - 3000:8000 # local:docker
+    build:
+      context: .
+      dockerfile: Dockerfile.provider
+    environment:
+      AMQP_SERVER_URL: amqp://guest:guest@rabbit-mq:5672/
+    restart: always
+    networks:
+      - dev-net
+    depends_on:
+      - rabbit-mq
+    links:
+      - rabbit-mq
+  
+  first_consumer:
+    container_name: first_consumer
+    build:
+      context: .
+      dockerfile: Dockerfile.first_consumer
+    environment:
+      AMQP_SERVER_URL: amqp://guest:guest@rabbit-mq:5672/
+    restart: always
+    networks:
+      - dev-net
+    depends_on:
+      - provider
+      - rabbit-mq
+
+  second_consumer:
+    container_name: second_consumer
+    build:
+      context: .
+      dockerfile: Dockerfile.second_consumer
+    environment:
+      AMQP_SERVER_URL: amqp://guest:guest@rabbit-mq:5672/
+    restart: always
+    networks:
+      - dev-net
+    depends_on:
+      - provider
+      - rabbit-mq
+      
+networks: 
+  dev-net:
+      driver: bridge 
